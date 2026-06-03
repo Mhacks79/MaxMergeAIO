@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MaxMerge</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #141420;
+  --surface:   #1e1e2e;
+  --surface2:  #252535;
+  --border:    #383850;
+  --border2:   #4a4a65;
+  --text:      #cdd6f4;
+  --text-dim:  #6c7086;
+  --text-mid:  #a6adc8;
+  --accent:    #89b4fa;
+  --accent2:   #74c7ec;
+  --green:     #a6e3a1;
+  --red:       #f38ba8;
+  --yellow:    #f9e2af;
+  --purple:    #cba6f7;
+  --peach:     #fab387;
+
+  --glow:      rgba(137,180,250,0.18);
+  --glow-sm:   rgba(137,180,250,0.08);
+
+  --btn-bg:    #2a2a3e;
+  --btn-hover: #363650;
+  --btn-act:   #1d3a5c;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar            { width: 6px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover{ background: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════
+   SETUP PANEL
+═══════════════════════════════════════════════ */
+#setup-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex: 1;
+  padding: 40px 24px;
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(137,180,250,0.07) 0%, transparent 70%),
+    var(--bg);
+}
+
+/* Title */
+.setup-title {
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 60%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(137,180,250,0.35));
+}
+.setup-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: -8px;
+}
+
+/* Glass card */
+.setup-card {
+  background: linear-gradient(145deg, rgba(37,37,53,0.9), rgba(30,30,46,0.95));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* Manager tabs */
+.tab-row {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 7px 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: background 0.18s, color 0.18s;
+}
+.tab-btn:hover  { background: var(--btn-hover); color: var(--text-mid); }
+.tab-btn.active {
+  background: linear-gradient(135deg, #1e3a5c, #162d4a);
+  color: var(--accent);
+  box-shadow: 0 1px 8px rgba(137,180,250,0.2);
+}
+
+/* Path rows */
+.path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.path-row label {
+  width: 142px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-mid);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+.path-row input, .path-row select {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.path-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(137,180,250,0.12);
+}
+.path-row select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(137,180,250,0.12);
+}
+.path-row .browse-btn {
+  padding: 6px 12px;
+  background: var(--btn-bg);
+  color: var(--text-mid);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.path-row .browse-btn:hover { background: var(--btn-hover); color: var(--text); }
+
+/* Game detected banner */
+.game-banner {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(137,180,250,0.06);
+  border: 1px solid rgba(137,180,250,0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  animation: fadeIn 0.3s ease;
+}
+.game-banner.visible { display: flex; }
+.game-banner .gb-icon { font-size: 15px; }
+.game-banner .gb-game { color: var(--accent); font-weight: bold; }
+.game-banner .gb-se   { color: var(--text-dim); font-size: 11px; }
+
+/* Divider */
+.setup-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* Start button */
+#start-btn {
+  align-self: center;
+  padding: 9px 40px;
+  background: linear-gradient(135deg, #1e3d6b, #152d50);
+  color: var(--accent);
+  border: 1px solid rgba(137,180,250,0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  box-shadow: 0 2px 12px rgba(137,180,250,0.15);
+}
+#start-btn:hover {
+  background: linear-gradient(135deg, #254a80, #1c3760);
+  box-shadow: 0 4px 20px rgba(137,180,250,0.28);
+  transform: translateY(-1px);
+}
+#start-btn:active { transform: translateY(0); }
+
+#setup-error {
+  text-align: center;
+  color: var(--red);
+  font-size: 12px;
+  min-height: 16px;
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLBAR
+═══════════════════════════════════════════════ */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.tb-btn {
+  padding: 4px 9px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11.5px;
+  white-space: nowrap;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+.tb-btn:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+.tb-btn:disabled { opacity: 0.3; cursor: default; }
+.tb-btn.active {
+  background: var(--btn-act);
+  color: var(--accent);
+  border-color: rgba(137,180,250,0.35);
+}
+.tb-btn.danger:hover {
+  background: rgba(243,139,168,0.12);
+  color: var(--red);
+  border-color: rgba(243,139,168,0.3);
+}
+
+/* Toolbar separator */
+.tb-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+#statusbar {
+  flex: 1;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Game badge (toolbar) */
+#gamebadge {
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  display: none;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+#gamebadge.skyrim   { color: var(--accent);  background: rgba(137,180,250,0.1); border-color: rgba(137,180,250,0.25); }
+#gamebadge.fallout4 { color: var(--peach);   background: rgba(250,179,135,0.1); border-color: rgba(250,179,135,0.25); }
+#gamebadge.falloutnv{ color: var(--green);   background: rgba(166,227,161,0.1); border-color: rgba(166,227,161,0.25); }
+#gamebadge.enderal  { color: var(--purple);  background: rgba(203,166,247,0.1); border-color: rgba(203,166,247,0.25); }
+
+#activebar {
+  font-size: 11px;
+  color: var(--green);
+  background: rgba(166,227,161,0.07);
+  border: 1px solid rgba(166,227,161,0.18);
+  border-radius: 20px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════
+   PLUGIN LIST
+═══════════════════════════════════════════════ */
+#main-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+#main-panel.visible { display: flex; }
+
+#list-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #0e0e18;
+}
+#plugin-list { width: 100%; border-collapse: collapse; }
+#plugin-list tr { cursor: pointer; user-select: none; }
+#plugin-list tr:hover td { filter: brightness(1.18); }
+#plugin-list td {
+  padding: 2px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.025);
+}
+.col-idx  { width: 46px; text-align: right; color: var(--text-dim); font-size: 11px; }
+.col-name { max-width: 0; width: 100%; }
+.col-mg   { width: 60px; text-align: right; font-size: 11px; color: var(--text-dim); }
+
+/* pRel colors */
+tr.sel td        { background: #1e3a5e !important; color: #fff !important; }
+tr.prel-1 td     { background: #35141a; }
+tr.prel-2 td     { background: #291e00; }
+tr.prel-3 td     { background: #0d1e35; }
+tr.prel-4 td     { background: #2a1422; }
+tr.prel-5 td     { background: #181826; }
+
+/* Merge groups */
+tr.merge-header td    { background: #0f2010; color: var(--green); font-weight: bold; letter-spacing: 0.3px; }
+tr.merge-item td      { background: #111a11; padding-left: 22px; }
+tr.merge-conflict td  { background: #2a0f0f; }
+
+/* Mergeability */
+.pfx          { margin-right: 3px; }
+.pfx-up       { color: var(--green); }
+.pfx-down     { color: var(--red); }
+.pfx-navi     { color: var(--yellow); }
+.pfx-parent   { color: #88cc88; }
+
+/* ═══════════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════════ */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,10,22,0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  z-index: 100;
+}
+#loading-overlay.hidden { display: none; }
+
+/* Multi-ring spinner */
+.spinner-wrap { position: relative; width: 52px; height: 52px; }
+.ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+.ring-1 {
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+.ring-2 {
+  inset: 8px;
+  border-right-color: var(--accent2);
+  animation: spin 1.4s linear infinite reverse;
+}
+.ring-3 {
+  inset: 16px;
+  border-bottom-color: var(--purple);
+  animation: spin 1.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loading-msg {
+  color: var(--text-mid);
+  font-size: 13px;
+  max-width: 380px;
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+/* Progress bar */
+#progress-wrap {
+  width: 320px;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+#progress-wrap.visible { display: flex; }
+#progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent), var(--purple));
+  background-size: 200% 100%;
+  border-radius: 4px;
+  transition: width 0.35s ease;
+  animation: shimmer 2s linear infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+#progress-label { font-size: 11px; color: var(--text-dim); }
+#eta-label      { font-size: 11px; color: var(--text-dim); display: none; }
+#eta-label.visible { display: block; }
+
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: var(--text);
+  font-size: 12px;
+  max-width: 340px;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  z-index: 200;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+#toast.show     { opacity: 1; transform: translateX(0); }
+#toast.t-ok     { border-left-color: var(--green); }
+#toast.t-err    { border-left-color: var(--red);   }
+#toast.t-warn   { border-left-color: var(--yellow);}
+#toast.t-info   { border-left-color: var(--accent);}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SETUP PANEL
+════════════════════════════════════════════ -->
+<div id="setup-panel">
+  <div class="setup-title">MaxMerge</div>
+  <p class="setup-sub">Skyrim SE · LE · VR &nbsp;·&nbsp; Enderal &nbsp;·&nbsp; Fallout 4 &nbsp;·&nbsp; Fallout New Vegas</p>
+
+  <div class="setup-card">
+
+    <!-- Manager tabs -->
+    <div class="tab-row">
+      <button id="tab-mo2"    class="tab-btn active" onclick="switchManager('mo2')">
+        📁&nbsp; Mod Organizer 2
+      </button>
+      <button id="tab-vortex" class="tab-btn"        onclick="switchManager('vortex')">
+        🌀&nbsp; Vortex
+      </button>
+    </div>
+
+    <!-- ── MO2 ── -->
+    <div id="panel-mo2">
+      <div class="path-row">
+        <label>ModOrganizer.ini</label>
+        <input id="inp-moini" type="text"
+               placeholder="C:\ModOrganizer2\ModOrganizer.ini"
+               onblur="detectMO2Game(this.value)">
+        <button class="browse-btn" onclick="browseFile('ini','moini')">Browse…</button>
+      </div>
+      <div id="mo2-banner" class="game-banner" style="margin-top:2px;">
+        <span class="gb-icon">🎮</span>
+        <span id="mo2-game" class="gb-game"></span>
+        <span id="mo2-se"   class="gb-se"></span>
+      </div>
+    </div>
+
+    <!-- ── Vortex ── -->
+    <div id="panel-vortex" style="display:none; display:flex; flex-direction:column; gap:10px;">
+      <div class="path-row">
+        <label>Game</label>
+        <select id="sel-vgame" style="flex:1;">
+          <option value="">— Detecting installed games… —</option>
+        </select>
+      </div>
+      <div id="vortex-banner" class="game-banner">
+        <span class="gb-icon">🎮</span>
+        <span id="vortex-game" class="gb-game"></span>
+        <span id="vortex-se"   class="gb-se"></span>
+      </div>
+      <div class="path-row">
+        <label>Profile</label>
+        <select id="sel-vprofile" style="flex:1;">
+          <option value="">— Choose a game first —</option>
+        </select>
+      </div>
+      <div class="path-row">
+        <label>Staging folder</label>
+        <input id="inp-vstaging"  type="text" placeholder="(auto-detected)">
+        <button class="browse-btn" onclick="browseFolder('vstaging')">Browse…</button>
+      </div>
+      <div class="path-row">
+        <label>Game folder</label>
+        <input id="inp-vgamepath" type="text"
+               placeholder="C:\Steam\steamapps\common\Skyrim Special Edition">
+        <button class="browse-btn" onclick="browseFolder('vgamepath')">Browse…</button>
+      </div>
+    </div>
+
+    <hr class="setup-divider">
+
+    <div class="path-row">
+      <label>bsarch.exe</label>
+      <input id="inp-bsarch" type="text"
+             placeholder="Optional — scans BSA / BA2 archives for soft dependencies">
+      <button class="browse-btn" onclick="browseFile('exe','bsarch')">Browse…</button>
+    </div>
+
+    <button id="start-btn" onclick="startPipeline()">▶ &nbsp;Start</button>
+    <div id="setup-error"></div>
+
+  </div><!-- .setup-card -->
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN PANEL
+════════════════════════════════════════════ -->
+<div id="main-panel">
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <!-- Move group -->
+    <button class="tb-btn" title="Move as high as possible (to lowest master)."
+            onclick="action('move_to_master')">⤒ Master</button>
+    <button class="tb-btn" title="Move up to previous merge boundary."
+            onclick="action('move_before')">↑ Before</button>
+    <button class="tb-btn" title="Move up one slot."
+            onclick="action('move_up')">▲ Up</button>
+    <button class="tb-btn" title="Move down one slot."
+            onclick="action('move_down')">▼ Down</button>
+    <button class="tb-btn" title="Move down to next merge boundary."
+            onclick="action('move_after')">↓ After</button>
+    <button class="tb-btn" title="Move as low as possible (to highest child)."
+            onclick="action('move_to_child')">⤓ Child</button>
+
+    <div class="tb-sep"></div>
+
+    <!-- Merge group -->
+    <button class="tb-btn" title="Toggle mergeability for this plugin."
+            onclick="action('toggle_mergeability')">⇄ Toggle</button>
+    <button class="tb-btn" title="Ignore all issue flags for this plugin."
+            onclick="action('ignore_flags')">⊘ Ignore</button>
+
+    <!-- Status -->
+    <span id="statusbar">Loading…</span>
+    <span id="gamebadge"></span>
+    <span id="activebar"></span>
+
+    <div class="tb-sep"></div>
+
+    <!-- Actions group -->
+    <button id="btn-autosort" class="tb-btn"
+            title="Start/stop stochastic auto-sorting."
+            onclick="toggleAutoSort()">⚙ Auto Sort</button>
+    <button class="tb-btn danger" title="Reset to initial load order (local only)."
+            onclick="resetLoadorder()">↩ Reset</button>
+    <button class="tb-btn" title="Generate Mator Smash Patches.json."
+            onclick="createSmash()">🔨 Smash</button>
+    <button class="tb-btn" title="Generate zMerge merges.json."
+            onclick="createMerge()">🔗 Merge</button>
+    <button class="tb-btn" title="Write loadorder.txt and plugins.txt. [Ctrl+S]"
+            onclick="action('save_loadorder')">💾 Save</button>
+  </div>
+
+  <!-- Plugin list -->
+  <div id="list-container">
+    <table id="plugin-list">
+      <tbody id="plugin-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner-wrap">
+    <div class="ring ring-1"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-3"></div>
+  </div>
+  <div id="loading-msg">Connecting…</div>
+  <div id="progress-wrap">
+    <div id="progress-track"><div id="progress-bar"></div></div>
+    <div id="progress-label"></div>
+  </div>
+  <div id="eta-label"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const S = {
+  loadorder:    [],
+  gui_list:     [],
+  colors:       [],
+  mg_conflicts: [],
+  selection:    0,
+  merge_groups: [],
+  phase:        'idle',
+  autosort:     false,
+  backup_lo:    null,
+  game_id:      '',
+};
+
+// ============================================================
+// WebSocket
+// ============================================================
+const socket = io({ transports: ['websocket', 'polling'] });
+
+socket.on('connect', () => {
+  fetch('/api/state').then(r => r.json()).then(data => {
+    if (data.phase === 'ready') {
+      applyState(data);
+      showMain();
+      if (data.game_name) applyGameBadge(data.game_name, data.se_name, data.game_id);
+      hideOverlay();
+    } else if (data.phase !== 'idle') {
+      showMain();
+      showOverlay(data.status || 'Loading…');
+    } else {
+      hideOverlay();
+    }
+  });
+});
+
+socket.on('disconnect', () => showOverlay('Connection lost…'));
+
+socket.on('status', ({ msg, phase, pct }) => {
+  S.phase = phase;
+  document.getElementById('statusbar').textContent = msg.substring(0, 90);
+  if (phase === 'computing') {
+    const p = pct !== undefined ? pct : extractPct(msg);
+    showOverlay(msg, p);
+  } else if (phase === 'loading') {
+    showOverlay(msg);
+    setProgress(null);
+  } else if (phase === 'ready') {
+    hideOverlay();
+  } else if (phase === 'error') {
+    hideOverlay();
+    toast('❌ ' + msg, 'err', 6000);
+  }
+});
+
+function extractPct(msg) {
+  const m = msg.match(/(\d+)\s*%/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+socket.on('ready', ({ active, total, game, game_id, se_name } = {}) => {
+  hideOverlay();
+  showMain();
+  if (active !== undefined) updateActiveBar(active, total);
+  if (game) applyGameBadge(game, se_name, game_id);
+  toast('✅ Load complete', 'ok');
+});
+
+socket.on('guilist', ({ list, selection, loadorder, active, total }) => {
+  S.gui_list     = list;
+  S.loadorder    = loadorder;
+  S.selection    = selection;
+  S.merge_groups = list.map(r => r[0]);
+  if (!S.backup_lo) S.backup_lo = [...loadorder];
+  if (active !== undefined) updateActiveBar(active, total);
+  renderList();
+});
+
+socket.on('colors',  ({ colors, mgConflicts }) => {
+  S.colors       = colors;
+  S.mg_conflicts = mgConflicts || [];
+  applyColors();
+});
+
+socket.on('info',  ({ msg }) => toast('ℹ ' + msg, 'info'));
+socket.on('error', ({ msg }) => toast('❌ ' + msg, 'err', 6000));
+
+// ============================================================
+// Setup — manager / game selection
+// ============================================================
+let _manager = 'mo2';
+
+function switchManager(mgr) {
+  _manager = mgr;
+  document.getElementById('tab-mo2').classList.toggle('active',    mgr === 'mo2');
+  document.getElementById('tab-vortex').classList.toggle('active', mgr === 'vortex');
+  document.getElementById('panel-mo2').style.display    = mgr === 'mo2'    ? '' : 'none';
+  document.getElementById('panel-vortex').style.display = mgr === 'vortex' ? 'flex' : 'none';
+  if (mgr === 'vortex') loadVortexGames();
+}
+// Hide vortex panel initially
+document.getElementById('panel-vortex').style.display = 'none';
+
+// MO2: quick game detection from .ini
+async function detectMO2Game(path) {
+  path = (path || '').trim();
+  if (!path) return;
+  try {
+    const r = await fetch('/api/detect_mo2_game', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    const j = await r.json();
+    const banner = document.getElementById('mo2-banner');
+    if (j.ok) {
+      document.getElementById('mo2-game').textContent = j.game_name;
+      document.getElementById('mo2-se').textContent   = ' · ' + j.se_name;
+      banner.classList.add('visible');
+    } else {
+      banner.classList.remove('visible');
+    }
+  } catch(_) {
+    document.getElementById('mo2-banner').classList.remove('visible');
+  }
+}
+
+// Vortex: detect installed games
+async function loadVortexGames() {
+  const sel = document.getElementById('sel-vgame');
+  sel.innerHTML = '<option value="">Detecting…</option>';
+  try {
+    const r = await fetch('/api/vortex_detect');
+    const j = await r.json();
+    sel.innerHTML = '';
+    if (!j.games || j.games.length === 0) {
+      sel.innerHTML = '<option value="">No Vortex game found</option>';
+      return;
+    }
+    if (j.games.length > 1)
+      sel.innerHTML = '<option value="">— Choose a game —</option>';
+    for (const g of j.games) {
+      const opt = document.createElement('option');
+      opt.value           = g.id;
+      opt.textContent     = g.name;
+      opt.dataset.staging = g.staging_dir  || '';
+      opt.dataset.seName  = g.se_name      || 'SKSE';
+      sel.appendChild(opt);
+    }
+    sel.onchange = () => {
+      const opt = sel.selectedOptions[0];
+      if (opt && opt.value)
+        loadVortexProfiles(opt.value, opt.dataset.staging, opt.dataset.seName, opt.textContent);
+    };
+    // Auto-select if exactly one game
+    if (j.games.length === 1) {
+      sel.selectedIndex = 0;
+      sel.onchange();
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">Detection error</option>';
+    toast('❌ Vortex detect: ' + e, 'err', 5000);
+  }
+}
+
+async function loadVortexProfiles(gameId, defaultStaging, seName, gameName) {
+  const psel   = document.getElementById('sel-vprofile');
+  const sinp   = document.getElementById('inp-vstaging');
+  const banner = document.getElementById('vortex-banner');
+
+  if (!gameId) { psel.innerHTML = '<option value="">—</option>'; banner.classList.remove('visible'); return; }
+
+  document.getElementById('vortex-game').textContent = gameName || gameId;
+  document.getElementById('vortex-se').textContent   = seName ? ' · ' + seName : '';
+  banner.classList.add('visible');
+
+  if (defaultStaging) sinp.value = defaultStaging;
+  psel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const r = await fetch('/api/vortex_profiles?game_id=' + encodeURIComponent(gameId));
+    const j = await r.json();
+    psel.innerHTML = '';
+    if (!j.profiles || j.profiles.length === 0) {
+      psel.innerHTML = '<option value="">No profile found</option>';
+      return;
+    }
+    for (const p of j.profiles) {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      psel.appendChild(opt);
+    }
+    if (j.default_staging) sinp.value = j.default_staging;
+  } catch(e) {
+    toast('❌ Vortex profiles: ' + e, 'err', 5000);
+  }
+}
+
+// File/folder browse dialogs
+async function browseFile(type, inputId) {
+  try {
+    const r = await fetch('/api/browse', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    });
+    const j = await r.json();
+    if (j.ok && j.path) {
+      document.getElementById('inp-' + inputId).value = j.path;
+      if (inputId === 'moini') detectMO2Game(j.path);
+    } else if (j.error) {
+      toast('❌ ' + j.error, 'err', 5000);
+    }
+  } catch(e) { toast('❌ ' + e, 'err', 5000); }
+}
+
+async function browseFolder(inputId) {
+  try {
+    const r = await fetch('/api/browse', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'folder' }),
+    });
+    const j = await r.json();
+    if (j.ok && j.path) document.getElementById('inp-' + inputId).value = j.path;
+    else if (j.error)   toast('❌ ' + j.error, 'err', 5000);
+  } catch(e) { toast('❌ ' + e, 'err', 5000); }
+}
+
+async function startPipeline() {
+  document.getElementById('setup-error').textContent = '';
+  const body = { bsarch: document.getElementById('inp-bsarch').value.trim(), manager: _manager };
+
+  if (_manager === 'vortex') {
+    body.game_id   = document.getElementById('sel-vgame').value;
+    body.profile   = document.getElementById('sel-vprofile').value;
+    body.staging   = document.getElementById('inp-vstaging').value.trim();
+    body.game_path = document.getElementById('inp-vgamepath').value.trim();
+    if (!body.game_id || !body.profile) {
+      document.getElementById('setup-error').textContent = 'Select a Vortex game and profile.';
+      return;
+    }
+    if (!body.game_path) {
+      document.getElementById('setup-error').textContent = 'Game folder is required.';
+      return;
+    }
+  } else {
+    body.mo_ini = document.getElementById('inp-moini').value.trim();
+    if (!body.mo_ini) {
+      document.getElementById('setup-error').textContent = 'ModOrganizer.ini is required.';
+      return;
+    }
+  }
+
+  await fetch('/api/set_paths', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const r = await fetch('/api/start', { method: 'POST' });
+  const j = await r.json();
+  if (!j.ok) { document.getElementById('setup-error').textContent = j.error || 'Unknown error'; return; }
+  showMain();
+  showOverlay('Starting…');
+}
+
+// ============================================================
+// Game badge
+// ============================================================
+function applyGameBadge(game, seName, gameId) {
+  S.game_id = gameId || '';
+  const badge = document.getElementById('gamebadge');
+  badge.textContent = '🎮 ' + game + (seName ? '  ' + seName : '');
+  badge.className = '';
+  if (/fallout4/i.test(gameId))      badge.classList.add('fallout4');
+  else if (/falloutnv/i.test(gameId))badge.classList.add('falloutnv');
+  else if (/enderal/i.test(gameId))  badge.classList.add('enderal');
+  else                               badge.classList.add('skyrim');
+  badge.style.display = 'inline';
+}
+
+// ============================================================
+// Display helpers
+// ============================================================
+function showMain() {
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('main-panel').classList.add('visible');
+}
+
+const _pStart = {};
+function showOverlay(msg, pct = null) {
+  const o = document.getElementById('loading-overlay');
+  document.getElementById('loading-msg').textContent = msg;
+  o.classList.remove('hidden');
+  if (pct !== null) setProgress(pct);
+}
+function hideOverlay() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+  setProgress(null);
+}
+
+function updateActiveBar(active, total) {
+  const el = document.getElementById('activebar');
+  el.style.display = 'inline';
+  el.textContent = `${active} active · ${total - active} merged`;
+}
+
+function setProgress(pct) {
+  const wrap = document.getElementById('progress-wrap');
+  const bar  = document.getElementById('progress-bar');
+  const lbl  = document.getElementById('progress-label');
+  const eta  = document.getElementById('eta-label');
+
+  if (pct === null) {
+    wrap.classList.remove('visible');
+    eta.classList.remove('visible');
+    _pStart.t = null; _pStart.pct = null;
+    return;
+  }
+  wrap.classList.add('visible');
+  bar.style.width = pct + '%';
+  lbl.textContent = Math.round(pct) + '%';
+
+  if (!_pStart.t || pct <= (_pStart.pct || 0)) {
+    _pStart.t = Date.now(); _pStart.pct = pct;
+    eta.classList.remove('visible');
+  } else {
+    const elapsed = (Date.now() - _pStart.t) / 1000;
+    const done    = pct - _pStart.pct;
+    const remain  = 100 - pct;
+    if (done > 2) {
+      const secs = Math.round(elapsed / done * remain);
+      eta.classList.add('visible');
+      eta.textContent = secs > 60
+        ? `~${Math.round(secs / 60)} min remaining`
+        : `~${secs}s remaining`;
+    }
+  }
+}
+
+function applyState(data) {
+  if (data.gui_list)      S.gui_list     = data.gui_list;
+  if (data.loadorder)     S.loadorder    = data.loadorder;
+  if (data.selection != null) S.selection = data.selection;
+  if (data.colors)        S.colors       = data.colors;
+  if (data.mg_conflicts)  S.mg_conflicts  = data.mg_conflicts;
+  S.merge_groups = S.gui_list.map(r => r[0]);
+  if (S.gui_list.length) renderList();
+  if (S.colors.length)   applyColors();
+}
+
+// ============================================================
+// Render plugin list
+// ============================================================
+function renderList() {
+  const tbody = document.getElementById('plugin-tbody');
+  tbody.innerHTML = '';
+  const list = S.gui_list;
+
+  for (let a = 0; a < list.length; a++) {
+    const [mg, m, display] = list[a];
+
+    // Merge group header row
+    if (mg > 0 && (a === 0 || list[a-1][0] !== mg)) {
+      let count = 0;
+      for (let b = a; b < list.length && list[b][0] === mg; b++) count++;
+      const pad = String(mg).padStart(2, '0');
+      const hasConf = S.mg_conflicts[mg];
+      const hdr = document.createElement('tr');
+      hdr.className = 'merge-header' + (hasConf ? ' merge-conflict' : '');
+      hdr.innerHTML = `<td class="col-idx"></td>
+        <td class="col-name">▸ Merge ${pad} &nbsp;<span style="opacity:.5;font-size:11px;">(${count} plugins${hasConf ? ' · ⚠ conflicts' : ''})</span></td>
+        <td class="col-mg">${mg}</td>`;
+      tbody.appendChild(hdr);
+    }
+
+    const tr = document.createElement('tr');
+    tr.dataset.index = a;
+    tr.className = mg > 0 ? 'merge-item' : '';
+    if (a === S.selection) tr.classList.add('sel');
+
+    let pfx = '';
+    if (mg === 0) {
+      if (m === 1)       pfx = '<span class="pfx pfx-up">+</span>';
+      else if (m === -1) pfx = '<span class="pfx pfx-parent">:</span>';
+      else if (m === 2)  pfx = '<span class="pfx pfx-navi">·</span>';
+      else               pfx = '<span class="pfx pfx-down">−</span>';
+    }
+
+    tr.innerHTML = `<td class="col-idx">${a + 1}</td>
+      <td class="col-name">${pfx}${escHtml(display)}</td>
+      <td class="col-mg">${mg || ''}</td>`;
+
+    tr.addEventListener('click',    () => selectPlugin(a));
+    tr.addEventListener('dblclick', () => { selectPlugin(a); action('toggle_mergeability'); });
+    tbody.appendChild(tr);
+  }
+
+  applyColors();
+  scrollToSel();
+}
+
+function applyColors() {
+  document.querySelectorAll('#plugin-tbody tr[data-index]').forEach(tr => {
+    const idx = parseInt(tr.dataset.index);
+    tr.classList.remove('prel-1','prel-2','prel-3','prel-4','prel-5','sel');
+    if (idx === S.selection) tr.classList.add('sel');
+    else if (S.colors[idx]) tr.classList.add('prel-' + S.colors[idx]);
+  });
+}
+
+function scrollToSel() {
+  const sel = document.querySelector('#plugin-tbody tr.sel');
+  if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// Interactions
+// ============================================================
+function selectPlugin(idx) {
+  if (idx < 0 || idx >= S.loadorder.length) return;
+  S.selection = idx;
+  applyColors();
+  socket.emit('select', { index: idx });
+}
+
+function action(cmd) {
+  if (S.phase !== 'ready') return;
+  socket.emit(cmd, { index: S.selection });
+}
+
+function toggleAutoSort() {
+  S.autosort = !S.autosort;
+  const btn = document.getElementById('btn-autosort');
+  btn.classList.toggle('active', S.autosort);
+  btn.textContent = S.autosort ? '⏹ Stop Sort' : '⚙ Auto Sort';
+  socket.emit('toggle_autosort', {});
+}
+
+function resetLoadorder() {
+  if (!S.backup_lo) { toast('No backup available yet', 'warn'); return; }
+  S.loadorder    = [...S.backup_lo];
+  S.gui_list     = [];
+  S.merge_groups = [];
+  S.colors       = [];
+  renderList();
+  toast('↩ Loadorder reset (not saved to disk)', 'warn');
+}
+
+// ============================================================
+// Keyboard
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (S.phase !== 'ready') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  switch (e.key) {
+    case 'ArrowUp':
+      e.preventDefault();
+      if (e.shiftKey) action('move_up'); else selectPlugin(S.selection - 1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      if (e.shiftKey) action('move_down'); else selectPlugin(S.selection + 1);
+      break;
+    case 'PageUp':   e.preventDefault(); action('move_before');    break;
+    case 'PageDown': e.preventDefault(); action('move_after');     break;
+    case 'Home':     e.preventDefault(); action('move_to_master'); break;
+    case 'End':      e.preventDefault(); action('move_to_child');  break;
+    case 'm': case 'M': action('toggle_mergeability'); break;
+    case 'i': case 'I': action('ignore_flags');        break;
+    case 's': case 'S':
+      if (e.ctrlKey) { e.preventDefault(); action('save_loadorder'); }
+      break;
+  }
+});
+
+// ============================================================
+// JSON generation
+// ============================================================
+function createSmash() {
+  if (!S.loadorder.length) return;
+  const mg = S.merge_groups, lo = S.loadorder;
+  const merges = [], leftover = [];
+  for (let a = 0; a < mg.length; a++) {
+    if (mg[a] === 0) { leftover.push(lo[a]); continue; }
+    if (a === 0 || mg[a] !== mg[a-1]) {
+      merges.push([]);
+      leftover.push('Merge ' + String(merges.length).padStart(2,'0') + '.esp');
+    }
+    if (merges.length) merges[merges.length-1].push(lo[a]);
+  }
+  const patches = [];
+  for (let a = 0; a < merges.length; a++) {
+    if (!S.mg_conflicts[a+1]) continue;
+    const n = String(a+1).padStart(2,'0');
+    patches.push({
+      dateBuilt: '12/30/1899', masters: [], filename: `Smash Merge ${n}.esp`,
+      pluginHashes: [], pluginSettings: [], fails: [],
+      name: `Smash Merge ${n}`, plugins: merges[a],
+    });
+  }
+  patches.push({
+    dateBuilt: '12/30/1899', masters: [], filename: 'Smash Patch.esp',
+    pluginHashes: [], pluginSettings: [], fails: [],
+    name: 'Smash Patch', plugins: leftover,
+  });
+  downloadJSON({ patches }, 'Patches.json');
+  toast('✅ Patches.json downloaded', 'ok');
+}
+
+async function createMerge() {
+  if (!S.loadorder.length) return;
+  toast('⏳ Generating merges.json…', 'info', 10000);
+  try {
+    const r = await fetch('/api/create_merge', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) { toast('❌ ' + (j.error || 'Error'), 'err', 6000); return; }
+    downloadJSON(j.data, 'merges.json');
+    toast(`✅ merges.json — ${j.data.length} merge(s)`, 'ok');
+  } catch(e) {
+    toast('❌ ' + e, 'err', 6000);
+  }
+}
+
+function downloadJSON(obj, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(
+    new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' })
+  );
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ============================================================
+// Toast  (type: 'ok' | 'err' | 'warn' | 'info')
+// ============================================================
+let _toastTimer = null;
+function toast(msg, type = 'info', duration = 3200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show t-' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+</script>
+</body>
+</html>
